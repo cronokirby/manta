@@ -8,7 +8,7 @@ pub struct Vec3 {
 }
 
 /// A type alias for vector, emphasizing their use as points in 3D space
-type Point3 = Vec3;
+pub type Point3 = Vec3;
 
 impl Vec3 {
     /// The squared length of this vector

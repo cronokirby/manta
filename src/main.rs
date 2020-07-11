@@ -1,5 +1,6 @@
 mod geometry;
 mod image;
+mod tracer;
 
 use image::{frgb, Image};
 use std::fs::File;
