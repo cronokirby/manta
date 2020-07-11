@@ -66,6 +66,9 @@ impl Image {
         self.data[start + 3] = color.a;
     }
 
+    /// Write this image in PPM format to some buffer
+    /// 
+    /// The PPM format is simple, but has no compression, and isn't commonly used.
     #[allow(dead_code)]
     pub fn write_ppm<W: io::Write>(&mut self, mut w: W) -> io::Result<()> {
         writeln!(&mut w, "P6")?;
@@ -79,6 +82,10 @@ impl Image {
         w.write_all(&no_alpha)
     }
 
+    /// Write this image in PNG format
+    /// 
+    /// The PNG format is lossless, but still uses compression. It's the standard for
+    /// faithful image formats.
     #[cfg(feature = "png")]
     pub fn write_png<W: io::Write>(&self, w: W) -> Result<(), png::EncodingError> {
         let mut encoder = png::Encoder::new(w, self.width as u32, self.height as u32);
