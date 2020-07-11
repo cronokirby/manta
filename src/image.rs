@@ -2,6 +2,38 @@
 use png;
 use std::io;
 
+/// Represents a pixel in RGBA, in floating point terms.
+/// 
+/// This is more useful for ray tracing itself, and can easily be converted to the final
+/// image pixel type.
+#[derive(Clone, Copy, Debug)]
+pub struct FRGBA {
+    r: f64,
+    g: f64,
+    b: f64,
+    a: f64,
+}
+
+fn clamp(f: f64) -> f64 {
+    if f > 1.0 {
+        1.0
+    } else if f < 0.0 {
+        0.0
+    } else {
+        f
+    }
+}
+
+/// Create a new FRGBA color with full opacity
+pub fn frgb(r: f64, g: f64, b: f64) -> FRGBA {
+    FRGBA {
+        r: clamp(r),
+        g: clamp(g),
+        b: clamp(b),
+        a: 1.0,
+    }
+}
+
 /// Represents an RGBA color / pixel
 ///
 /// This is our main representation of colors, and a pretty simple struct as well
@@ -13,12 +45,19 @@ pub struct RGBA {
     a: u8,
 }
 
-/// Create a new RGBA color with full opacity
-///
-/// This is a bit shorter than the `rgba` function in the common case where you
-/// don't want any transparency.
-pub fn rgb(r: u8, g: u8, b: u8) -> RGBA {
-    RGBA { r, g, b, a: 255 }
+fn convert_component(c: f64) -> u8 {
+    (c * 255.999) as u8
+}
+
+impl From<FRGBA> for RGBA {
+    fn from(color: FRGBA) -> Self {
+        RGBA {
+            r: convert_component(color.r),
+            g: convert_component(color.g),
+            b: convert_component(color.b),
+            a: convert_component(color.a),
+        }
+    }
 }
 
 /// Represents an Image.
@@ -58,7 +97,8 @@ impl Image {
     ///
     /// Trying to set an out of bounds pixel will panic, but not with the nicest error
     /// message.
-    pub fn set(&mut self, x: usize, y: usize, color: RGBA) {
+    pub fn set<C: Into<RGBA>>(&mut self, x: usize, y: usize, color: C) {
+        let color = color.into();
         let start = (self.width * y + x) << 2;
         self.data[start] = color.r;
         self.data[start + 1] = color.g;
@@ -67,7 +107,7 @@ impl Image {
     }
 
     /// Write this image in PPM format to some buffer
-    /// 
+    ///
     /// The PPM format is simple, but has no compression, and isn't commonly used.
     #[allow(dead_code)]
     pub fn write_ppm<W: io::Write>(&mut self, mut w: W) -> io::Result<()> {
@@ -83,7 +123,7 @@ impl Image {
     }
 
     /// Write this image in PNG format
-    /// 
+    ///
     /// The PNG format is lossless, but still uses compression. It's the standard for
     /// faithful image formats.
     #[cfg(feature = "png")]
