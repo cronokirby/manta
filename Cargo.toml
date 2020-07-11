@@ -1,3 +1,7 @@
+[features]
+# By default it makes sense to have PNG encoding
+default = ["png"]
+
 [package]
 name = "manta"
 version = "0.1.0"
@@ -5,3 +9,5 @@ authors = ["Lúcás Meier <cronokirby@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+# PNG encoding is an optional feature
+png = { version = "0.16.6", optional = true }

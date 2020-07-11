@@ -1,3 +1,5 @@
+#[cfg(feature = "png")]
+use png;
 use std::io;
 
 /// Represents an RGBA color / pixel
@@ -64,6 +66,7 @@ impl Image {
         self.data[start + 3] = color.a;
     }
 
+    #[allow(dead_code)]
     pub fn write_ppm<W: io::Write>(&mut self, mut w: W) -> io::Result<()> {
         writeln!(&mut w, "P6")?;
         writeln!(&mut w, "{} {} 255", self.width, self.height)?;
@@ -74,5 +77,14 @@ impl Image {
             }
         }
         w.write_all(&no_alpha)
+    }
+
+    #[cfg(feature = "png")]
+    pub fn write_png<W: io::Write>(&self, w: W) -> Result<(), png::EncodingError> {
+        let mut encoder = png::Encoder::new(w, self.width as u32, self.height as u32);
+        encoder.set_color(png::ColorType::RGBA);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header()?;
+        writer.write_image_data(&self.data)
     }
 }
