@@ -13,12 +13,31 @@ type Point3 = Vec3;
 impl Vec3 {
     /// The squared length of this vector
     pub fn len2(&self) -> f64 {
-        self.x * self.x + self.y * self.y + self.z * self.z
+        self.dot(self)
     }
 
     /// The length of this vector
     pub fn len(&self) -> f64 {
         self.len2().sqrt()
+    }
+
+    /// The standard dot product
+    pub fn dot(&self, that: &Vec3) -> f64 {
+        self.x * that.x + self.y * that.y + self.z * that.z
+    }
+
+    /// The cross product between two vectors
+    pub fn cross(&self, that: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.y * that.z - self.z * that.y,
+            y: self.z * that.x - self.x * that.z,
+            z: self.x * that.y - self.y * that.x,
+        }
+    }
+
+    /// Return the unit vector pointing in the same direction
+    pub fn normalize(&self) -> Vec3 {
+        *self / self.len()
     }
 }
 
