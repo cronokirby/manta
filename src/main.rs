@@ -12,6 +12,7 @@ fn main() -> io::Result<()> {
 
     let mut img = Image::empty(width, height);
     for y in 0..height {
+        println!("{} / {}", y + 1, height);
         for x in 0..width {
             let color = frgb(
                 x as f64 / (width - 1) as f64,
