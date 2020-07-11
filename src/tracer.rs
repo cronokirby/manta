@@ -17,7 +17,30 @@ impl Ray {
     }
 }
 
+struct Sphere {
+    center: Point3,
+    radius: f64,
+}
+
+impl Sphere {
+    fn intersects(&self, ray: &Ray) -> bool {
+        let oc = ray.origin - self.center;
+        let a = ray.direction.len2();
+        let b = 2.0 * oc.dot(&ray.direction);
+        let c = oc.len2() - self.radius * self.radius;
+        let discrim = b * b - 4.0 * a * c;
+        discrim > 0.0
+    }
+}
+
 fn ray_color(ray: &Ray) -> FRGBA {
+    let sphere = Sphere {
+        center: Vec3::new(0.0, 0.0, -1.0),
+        radius: 0.5,
+    };
+    if sphere.intersects(ray) {
+        return frgb(1.0, 0.0, 0.0);
+    }
     let unit_dir = ray.direction.normalize();
     let t = 0.5 * (unit_dir.y + 1.0);
     frgb(1.0, 1.0, 1.0).lerp(t, frgb(0.5, 0.7, 1.0))
