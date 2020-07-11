@@ -3,7 +3,7 @@ use png;
 use std::io;
 
 /// Represents a pixel in RGBA, in floating point terms.
-/// 
+///
 /// This is more useful for ray tracing itself, and can easily be converted to the final
 /// image pixel type.
 #[derive(Clone, Copy, Debug)]
@@ -12,6 +12,17 @@ pub struct FRGBA {
     g: f64,
     b: f64,
     a: f64,
+}
+
+impl FRGBA {
+    pub fn lerp(&self, t: f64, that: FRGBA) -> FRGBA {
+        let lrp = |a, b| a - t * (a - b);
+        frgb(
+            lrp(self.r, that.r),
+            lrp(self.g, that.g),
+            lrp(self.b, that.b),
+        )
+    }
 }
 
 fn clamp(f: f64) -> f64 {

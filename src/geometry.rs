@@ -11,6 +11,10 @@ pub struct Vec3 {
 pub type Point3 = Vec3;
 
 impl Vec3 {
+    pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
+        Vec3 { x, y, z }
+    }
+
     /// The squared length of this vector
     pub fn len2(&self) -> f64 {
         self.dot(self)
