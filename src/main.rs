@@ -1,4 +1,6 @@
+mod geometry;
 mod image;
+
 use image::{frgb, Image};
 use std::fs::File;
 use std::io;
