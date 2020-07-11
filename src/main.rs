@@ -7,13 +7,20 @@ use std::path::Path;
 extern crate png;
 
 fn main() -> io::Result<()> {
-    let mut img = Image::empty(3, 2);
-    img.set(0, 0, frgb(1.0, 0.0, 0.0));
-    img.set(1, 0, frgb(0.0, 1.0, 0.0));
-    img.set(2, 0, frgb(0.0, 0.0, 1.0));
-    img.set(0, 1, frgb(0.0, 0.0, 0.0));
-    img.set(1, 1, frgb(0.5, 0.5, 0.5));
-    img.set(2, 1, frgb(1.0, 1.0, 1.0));
+    let width = 400;
+    let height = 200;
+
+    let mut img = Image::empty(width, height);
+    for y in 0..height {
+        for x in 0..width {
+            let color = frgb(
+                x as f64 / (width - 1) as f64,
+                y as f64 / (height - 1) as f64,
+                0.25,
+            );
+            img.set(x, y, color);
+        }
+    }
 
     #[cfg(feature = "png")]
     {
