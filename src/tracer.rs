@@ -47,6 +47,26 @@ trait Hittable {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
+/// Represents a list of hittable objects
+struct HittableList {
+    hittables: Vec<Box<dyn Hittable>>
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut res: Option<HitRecord> = None;
+        let mut closest_t = t_max;
+        for obj in &self.hittables {
+            if let Some(rec)= obj.hit(ray, t_min, closest_t) {
+                res = Some(rec);
+                // Always lower, since t_min <= t < t_max
+                closest_t = rec.t;
+            }
+        }
+        res
+    }
+}
+
 struct Sphere {
     center: Point3,
     radius: f64,
