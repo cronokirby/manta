@@ -49,7 +49,19 @@ trait Hittable {
 
 /// Represents a list of hittable objects
 struct HittableList {
-    hittables: Vec<Box<dyn Hittable>>
+    hittables: Vec<Box<dyn Hittable>>,
+}
+
+impl HittableList {
+    fn new() -> Self {
+        HittableList {
+            hittables: Vec::new(),
+        }
+    }
+
+    fn add<H: Hittable + 'static>(&mut self, hittable: H) {
+        self.hittables.push(Box::new(hittable));
+    }
 }
 
 impl Hittable for HittableList {
@@ -57,7 +69,7 @@ impl Hittable for HittableList {
         let mut res: Option<HitRecord> = None;
         let mut closest_t = t_max;
         for obj in &self.hittables {
-            if let Some(rec)= obj.hit(ray, t_min, closest_t) {
+            if let Some(rec) = obj.hit(ray, t_min, closest_t) {
                 res = Some(rec);
                 // Always lower, since t_min <= t < t_max
                 closest_t = rec.t;
@@ -104,12 +116,8 @@ impl Hittable for Sphere {
     }
 }
 
-fn ray_color(ray: &Ray) -> FRGBA {
-    let sphere = Sphere {
-        center: Vec3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-    };
-    if let Some(rec) = sphere.hit(ray, f64::NEG_INFINITY, f64::INFINITY) {
+fn ray_color(ray: &Ray, world: &dyn Hittable) -> FRGBA {
+    if let Some(rec) = world.hit(ray, 0.0, f64::INFINITY) {
         let n = rec.normal;
         return frgb((n.x + 1.0) / 2.0, (n.y + 1.0) / 2.0, (n.z + 1.0) / 2.0);
     }
@@ -132,13 +140,23 @@ pub fn trace(width: usize) -> Image {
     let vertical = Vec3::new(0.0, VIEW_HEIGHT, 0.0);
     let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, FOCAL_LENGTH);
 
+    let mut world = HittableList::new();
+    world.add(Sphere {
+        center: Vec3::new(0.0, 0.0, -1.0),
+        radius: 0.5,
+    });
+    world.add(Sphere {
+        center: Vec3::new(0.0, -100.5, -1.0),
+        radius: 100.0,
+    });
+
     for y in 0..height {
         for x in 0..width {
             let u = x as f64 / (width - 1) as f64;
             let v = 1.0 - y as f64 / (height - 1) as f64;
             let direction = lower_left + horizontal * u + vertical * v - origin;
             let ray = Ray { origin, direction };
-            image.set(x, y, ray_color(&ray));
+            image.set(x, y, ray_color(&ray, &world));
         }
         println!("line {} / {}", y + 1, height);
     }
