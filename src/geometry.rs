@@ -1,5 +1,9 @@
 use std::ops;
 
+fn rand_range(min: f64, max: f64) -> f64 {
+    min + (max - min) * fastrand::f64()
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f64,
@@ -42,6 +46,15 @@ impl Vec3 {
     /// Return the unit vector pointing in the same direction
     pub fn normalize(&self) -> Vec3 {
         *self / self.len()
+    }
+
+    /// Get a random vector with components in a certain range
+    pub fn random(min: f64, max: f64) -> Vec3 {
+        Vec3::new(
+            rand_range(min, max),
+            rand_range(min, max),
+            rand_range(min, max),
+        )
     }
 }
 

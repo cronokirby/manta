@@ -2,8 +2,13 @@ use crate::geometry::{Point3, Vec3};
 use crate::image::{frgb, Image, FRGBA};
 use fastrand;
 
-fn rand_double(min: f64, max: f64) -> f64 {
-    min + (max - min) * fastrand::f64()
+fn unit_sphere_rand() -> Vec3 {
+    loop {
+        let p = Vec3::random(-1.0, 1.0);
+        if p.len2() < 1.0 {
+            return p;
+        }
+    }
 }
 
 /// Represents a ray of light moving along a certain line
@@ -170,14 +175,24 @@ impl Hittable for Sphere {
     }
 }
 
-fn ray_color(ray: &Ray, world: &dyn Hittable) -> FRGBA {
-    if let Some(rec) = world.hit(ray, 0.0, f64::INFINITY) {
-        let n = rec.normal;
-        return frgb((n.x + 1.0) / 2.0, (n.y + 1.0) / 2.0, (n.z + 1.0) / 2.0);
+fn ray_color(mut ray: Ray, world: &dyn Hittable, depth: i32) -> FRGBA {
+    let mut dampening = 1.0;
+    for _ in 0..depth {
+        if let Some(rec) = world.hit(&ray, 0.0, f64::INFINITY) {
+            dampening *= 0.5;
+            let target = rec.p + rec.normal + unit_sphere_rand();
+            ray = Ray {
+                origin: rec.p,
+                direction: target,
+            };
+        } else {
+            let unit = ray.direction.normalize();
+            let t = 0.5 * (unit.y + 1.0);
+            let base = frgb(1.0, 1.0, 1.0).lerp(t, frgb(0.5, 0.7, 1.0));
+            return frgb(base.r * dampening, base.g * dampening, base.b * dampening);
+        }
     }
-    let unit_dir = ray.direction.normalize();
-    let t = 0.5 * (unit_dir.y + 1.0);
-    frgb(1.0, 1.0, 1.0).lerp(t, frgb(0.5, 0.7, 1.0))
+    frgb(0.0, 0.0, 0.0)
 }
 
 /// A struct allowing us to add color samples, and end up with a final mixed color
@@ -221,16 +236,12 @@ impl SampledColor {
     }
 }
 
-const SAMPLES_PER_PIXEL: i32 = 100;
+const SAMPLES_PER_PIXEL: i32 = 50;
+const MAX_DEPTH: i32 = 50;
 
 pub fn trace(width: usize) -> Image {
     let height = ((width as f64) / ASPECT) as usize;
     let mut image = Image::empty(width, height);
-
-    let origin = Vec3::new(0.0, 0.0, 0.0);
-    let horizontal = Vec3::new(VIEW_WIDTH, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, VIEW_HEIGHT, 0.0);
-    let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, FOCAL_LENGTH);
 
     let mut world = HittableList::new();
     world.add(Sphere {
@@ -251,7 +262,7 @@ pub fn trace(width: usize) -> Image {
                 let u = (fastrand::f64() + x as f64) / (width - 1) as f64;
                 let v = 1.0 - (y as f64 - fastrand::f64()) / (height - 1) as f64;
                 let ray = camera.get_ray(u, v);
-                sampled.add(ray_color(&ray, &world));
+                sampled.add(ray_color(ray, &world, MAX_DEPTH));
             }
             image.set(x, y, sampled.result());
         }
