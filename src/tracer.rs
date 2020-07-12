@@ -22,10 +22,25 @@ impl Ray {
 struct HitRecord {
     /// The point we hit
     p: Point3,
-    /// The normal of the surface at the point we hit
-    normal: Vec3,
     /// The parameter to the ray equation at this point
     t: f64,
+    /// The normal of the surface at the point we hit
+    normal: Vec3,
+    /// Whether or not the normal is pointing outwards
+    outwards: bool,
+}
+
+impl HitRecord {
+    fn new(t: f64, p: Vec3, ray: &Ray, out_normal: Vec3) -> Self {
+        let outwards = ray.direction.dot(&out_normal) < 0.0;
+        let normal = if outwards { out_normal } else { -out_normal };
+        HitRecord {
+            p,
+            t,
+            normal,
+            outwards,
+        }
+    }
 }
 
 trait Hittable {
@@ -53,7 +68,7 @@ impl Hittable for Sphere {
                 let t = solution;
                 let p = ray.at(t);
                 let normal = (p - self.center) / self.radius;
-                HitRecord { t, p, normal }
+                HitRecord::new(t, p, ray, normal)
             };
             let valid_range = t_min..t_max;
             let solution1 = (-half_b - root) / a;
