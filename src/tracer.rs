@@ -1,14 +1,17 @@
 use crate::geometry::{Point3, Vec3};
 use crate::image::{frgb, Image, FRGBA};
 use fastrand;
+use std::f64::consts::PI;
 
-fn unit_sphere_rand() -> Vec3 {
-    loop {
-        let p = Vec3::random(-1.0, 1.0);
-        if p.len2() < 1.0 {
-            return p;
-        }
-    }
+fn rand_range(min: f64, max: f64) -> f64 {
+    min + (max - min) * fastrand::f64()
+}
+
+fn unit_rand() -> Vec3 {
+    let a = rand_range(0.0, 2.0 * PI);
+    let z = rand_range(-1.0, 1.0);
+    let r = (1.0 - z * z).sqrt();
+    Vec3::new(r * a.cos(), r * a.sin(), z)
 }
 
 /// Represents a ray of light moving along a certain line
@@ -180,7 +183,7 @@ fn ray_color(mut ray: Ray, world: &dyn Hittable, depth: i32) -> FRGBA {
     for _ in 0..depth {
         if let Some(rec) = world.hit(&ray, 0.0001, f64::INFINITY) {
             dampening *= 0.5;
-            let target = rec.p + rec.normal + unit_sphere_rand();
+            let target = rec.p + rec.normal + unit_rand();
             ray = Ray {
                 origin: rec.p,
                 direction: target,
