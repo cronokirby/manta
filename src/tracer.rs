@@ -178,7 +178,7 @@ impl Hittable for Sphere {
 fn ray_color(mut ray: Ray, world: &dyn Hittable, depth: i32) -> FRGBA {
     let mut dampening = 1.0;
     for _ in 0..depth {
-        if let Some(rec) = world.hit(&ray, 0.0, f64::INFINITY) {
+        if let Some(rec) = world.hit(&ray, 0.0001, f64::INFINITY) {
             dampening *= 0.5;
             let target = rec.p + rec.normal + unit_sphere_rand();
             ray = Ray {
