@@ -26,13 +26,13 @@ impl Sphere {
     fn intersects(&self, ray: &Ray) -> Option<f64> {
         let oc = ray.origin - self.center;
         let a = ray.direction.len2();
-        let b = 2.0 * oc.dot(&ray.direction);
+        let half_b = oc.dot(&ray.direction);
         let c = oc.len2() - self.radius * self.radius;
-        let discrim = b * b - 4.0 * a * c;
+        let discrim = half_b * half_b - a * c;
         if discrim < 0.0 {
             None
         } else {
-            Some((-b - discrim.sqrt()) / 2.0 / a)
+            Some((-half_b - discrim.sqrt()) / a)
         }
     }
 }
