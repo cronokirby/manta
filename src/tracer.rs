@@ -17,22 +17,54 @@ impl Ray {
     }
 }
 
+/// Represents the information we have after hitting a certain point.
+#[derive(Copy, Clone, Debug)]
+struct HitRecord {
+    /// The point we hit
+    p: Point3,
+    /// The normal of the surface at the point we hit
+    normal: Vec3,
+    /// The parameter to the ray equation at this point
+    t: f64,
+}
+
+trait Hittable {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+}
+
 struct Sphere {
     center: Point3,
     radius: f64,
 }
 
-impl Sphere {
-    fn intersects(&self, ray: &Ray) -> Option<f64> {
+impl Hittable for Sphere {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
         let a = ray.direction.len2();
         let half_b = oc.dot(&ray.direction);
         let c = oc.len2() - self.radius * self.radius;
         let discrim = half_b * half_b - a * c;
+
         if discrim < 0.0 {
             None
         } else {
-            Some((-half_b - discrim.sqrt()) / a)
+            let root = discrim.sqrt();
+            let get_record = |solution| {
+                let t = solution;
+                let p = ray.at(t);
+                let normal = (p - self.center) / self.radius;
+                HitRecord { t, p, normal }
+            };
+            let valid_range = t_min..t_max;
+            let solution1 = (-half_b - root) / a;
+            let solution2 = (-half_b + root) / a;
+            if valid_range.contains(&solution1) {
+                Some(get_record(solution1))
+            } else if valid_range.contains(&solution2) {
+                Some(get_record(solution2))
+            } else {
+                None
+            }
         }
     }
 }
@@ -42,8 +74,8 @@ fn ray_color(ray: &Ray) -> FRGBA {
         center: Vec3::new(0.0, 0.0, -1.0),
         radius: 0.5,
     };
-    if let Some(hit_t) = sphere.intersects(ray) {
-        let n = (ray.at(hit_t) - Vec3::new(0.0, 0.0, -1.0)).normalize();
+    if let Some(rec) = sphere.hit(ray, f64::NEG_INFINITY, f64::INFINITY) {
+        let n = rec.normal;
         return frgb((n.x + 1.0) / 2.0, (n.y + 1.0) / 2.0, (n.z + 1.0) / 2.0);
     }
     let unit_dir = ray.direction.normalize();
