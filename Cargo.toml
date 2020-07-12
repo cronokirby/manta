@@ -9,5 +9,6 @@ authors = ["Lúcás Meier <cronokirby@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+fastrand = "1.3.3"
 # PNG encoding is an optional feature
 png = { version = "0.16.6", optional = true }

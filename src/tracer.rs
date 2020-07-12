@@ -1,5 +1,10 @@
 use crate::geometry::{Point3, Vec3};
 use crate::image::{frgb, Image, FRGBA};
+use fastrand;
+
+fn rand_double(min: f64, max: f64) -> f64 {
+    min + (max - min) * fastrand::f64()
+}
 
 /// Represents a ray of light moving along a certain line
 #[derive(Clone, Copy, Debug)]
@@ -14,6 +19,55 @@ impl Ray {
     /// The idea is that the ray traces a line for each number t
     pub fn at(&self, t: f64) -> Point3 {
         self.origin + self.direction * t
+    }
+}
+
+/// Represents a camera that views the scene, and gives us a viewpoint from which to trace
+///
+/// The camera is the starting point for ray-tracing, and encodes concerns like the image
+/// size, and what we can see, etc.
+#[derive(Copy, Clone, Debug)]
+struct Camera {
+    /// We store the aspect ratio, because it's convenient, even though it can be
+    /// derived from other properties.
+    aspect: f64,
+    /// The origin, which should be 0, 0, 0
+    origin: Point3,
+    /// The lower left point of the image
+    lower_left: Point3,
+    /// A vector bringing us across the width of the image
+    horizontal: Vec3,
+    /// A vector bringing us across the height of the image
+    vertical: Vec3,
+}
+
+const ASPECT: f64 = 16.0 / 9.0;
+const VIEW_HEIGHT: f64 = 2.0;
+const VIEW_WIDTH: f64 = ASPECT * VIEW_HEIGHT;
+const FOCAL_LENGTH: f64 = 1.0;
+
+impl Camera {
+    fn new() -> Self {
+        let origin = Vec3::new(0.0, 0.0, 0.0);
+        let horizontal = Vec3::new(VIEW_WIDTH, 0.0, 0.0);
+        let vertical = Vec3::new(0.0, VIEW_HEIGHT, 0.0);
+        let lower_left =
+            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, FOCAL_LENGTH);
+
+        Camera {
+            aspect: ASPECT,
+            origin,
+            lower_left,
+            horizontal,
+            vertical,
+        }
+    }
+
+    fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray {
+            origin: self.origin,
+            direction: self.lower_left + self.horizontal * u + self.vertical * v - self.origin,
+        }
     }
 }
 
@@ -126,10 +180,48 @@ fn ray_color(ray: &Ray, world: &dyn Hittable) -> FRGBA {
     frgb(1.0, 1.0, 1.0).lerp(t, frgb(0.5, 0.7, 1.0))
 }
 
-const ASPECT: f64 = 16.0 / 9.0;
-const VIEW_HEIGHT: f64 = 2.0;
-const VIEW_WIDTH: f64 = ASPECT * VIEW_HEIGHT;
-const FOCAL_LENGTH: f64 = 1.0;
+/// A struct allowing us to add color samples, and end up with a final mixed color
+#[derive(Copy, Clone, Debug)]
+struct SampledColor {
+    samples: u32,
+    acc: FRGBA,
+}
+
+impl SampledColor {
+    fn empty() -> Self {
+        SampledColor {
+            samples: 0,
+            acc: FRGBA {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            },
+        }
+    }
+
+    fn add(&mut self, sample: FRGBA) {
+        self.samples += 1;
+        self.acc = FRGBA {
+            r: self.acc.r + sample.r,
+            g: self.acc.g + sample.g,
+            b: self.acc.b + sample.b,
+            a: self.acc.a + sample.a,
+        }
+    }
+
+    fn result(&self) -> FRGBA {
+        let total = self.samples as f64;
+        FRGBA {
+            r: self.acc.r / total,
+            g: self.acc.g / total,
+            b: self.acc.b / total,
+            a: self.acc.a / total,
+        }
+    }
+}
+
+const SAMPLES_PER_PIXEL: i32 = 100;
 
 pub fn trace(width: usize) -> Image {
     let height = ((width as f64) / ASPECT) as usize;
@@ -150,13 +242,18 @@ pub fn trace(width: usize) -> Image {
         radius: 100.0,
     });
 
+    let camera = Camera::new();
+
     for y in 0..height {
         for x in 0..width {
-            let u = x as f64 / (width - 1) as f64;
-            let v = 1.0 - y as f64 / (height - 1) as f64;
-            let direction = lower_left + horizontal * u + vertical * v - origin;
-            let ray = Ray { origin, direction };
-            image.set(x, y, ray_color(&ray, &world));
+            let mut sampled = SampledColor::empty();
+            for _ in 0..SAMPLES_PER_PIXEL {
+                let u = (fastrand::f64() + x as f64) / (width - 1) as f64;
+                let v = 1.0 - (y as f64 - fastrand::f64()) / (height - 1) as f64;
+                let ray = camera.get_ray(u, v);
+                sampled.add(ray_color(&ray, &world));
+            }
+            image.set(x, y, sampled.result());
         }
         println!("line {} / {}", y + 1, height);
     }

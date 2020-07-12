@@ -7,6 +7,7 @@ use std::io;
 use std::path::Path;
 #[cfg(feature = "png")]
 extern crate png;
+extern crate fastrand;
 
 fn main() -> io::Result<()> {
     let width = 400;
