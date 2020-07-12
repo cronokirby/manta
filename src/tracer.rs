@@ -79,6 +79,14 @@ impl Camera {
     }
 }
 
+/// Represents a material we can observe after hitting an object
+///
+/// Allows us to distinguish between metals and matte materials, and what not.
+#[derive(Copy, Clone, Debug)]
+enum Material {
+    Diffuse(FRGBA),
+}
+
 /// Represents the information we have after hitting a certain point.
 #[derive(Copy, Clone, Debug)]
 struct HitRecord {
@@ -90,10 +98,12 @@ struct HitRecord {
     normal: Vec3,
     /// Whether or not the normal is pointing outwards
     outwards: bool,
+    /// The material we observed when hitting an object
+    material: Material,
 }
 
 impl HitRecord {
-    fn new(t: f64, p: Vec3, ray: &Ray, out_normal: Vec3) -> Self {
+    fn new(t: f64, p: Vec3, ray: &Ray, out_normal: Vec3, material: Material) -> Self {
         let outwards = ray.direction.dot(&out_normal) < 0.0;
         let normal = if outwards { out_normal } else { -out_normal };
         HitRecord {
@@ -101,6 +111,21 @@ impl HitRecord {
             t,
             normal,
             outwards,
+            material,
+        }
+    }
+
+    fn scatter(&self, ray: &Ray) -> Option<(Ray, FRGBA)> {
+        match self.material {
+            Material::Diffuse(albedo) => {
+                let direction = self.normal + unit_rand();
+                let scattered = Ray {
+                    origin: self.p,
+                    direction,
+                };
+                let attenuation = albedo;
+                Some((scattered, attenuation))
+            }
         }
     }
 }
@@ -144,6 +169,7 @@ impl Hittable for HittableList {
 struct Sphere {
     center: Point3,
     radius: f64,
+    material: Material,
 }
 
 impl Hittable for Sphere {
@@ -162,7 +188,7 @@ impl Hittable for Sphere {
                 let t = solution;
                 let p = ray.at(t);
                 let normal = (p - self.center) / self.radius;
-                HitRecord::new(t, p, ray, normal)
+                HitRecord::new(t, p, ray, normal, self.material)
             };
             let valid_range = t_min..t_max;
             let solution1 = (-half_b - root) / a;
@@ -179,10 +205,15 @@ impl Hittable for Sphere {
 }
 
 fn ray_color(mut ray: Ray, world: &dyn Hittable, depth: i32) -> FRGBA {
-    let mut dampening = 1.0;
+    let mut color = frgb(1.0, 1.0, 1.0);
     for _ in 0..depth {
         if let Some(rec) = world.hit(&ray, 0.0001, f64::INFINITY) {
-            dampening *= 0.5;
+            if let Some((scattered, attenuation)) = rec.scatter(&ray) {
+                ray = scattered;
+                color.r *= attenuation.r;
+                color.g *= attenuation.g;
+                color.b *= attenuation.b;
+            }
             let target = rec.p + rec.normal + unit_rand();
             ray = Ray {
                 origin: rec.p,
@@ -192,7 +223,7 @@ fn ray_color(mut ray: Ray, world: &dyn Hittable, depth: i32) -> FRGBA {
             let unit = ray.direction.normalize();
             let t = 0.5 * (unit.y + 1.0);
             let base = frgb(1.0, 1.0, 1.0).lerp(t, frgb(0.5, 0.7, 1.0));
-            return frgb(base.r * dampening, base.g * dampening, base.b * dampening);
+            return frgb(base.r * color.r, base.g * color.g, base.b * color.b);
         }
     }
     frgb(0.0, 0.0, 0.0)
@@ -250,10 +281,12 @@ pub fn trace(width: usize) -> Image {
     world.add(Sphere {
         center: Vec3::new(0.0, 0.0, -1.0),
         radius: 0.5,
+        material: Material::Diffuse(frgb(0.7, 0.3, 0.3)),
     });
     world.add(Sphere {
         center: Vec3::new(0.0, -100.5, -1.0),
         radius: 100.0,
+        material: Material::Diffuse(frgb(0.8, 0.8, 0.8)),
     });
 
     let camera = Camera::new();
