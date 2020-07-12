@@ -228,9 +228,9 @@ impl SampledColor {
     fn result(&self) -> FRGBA {
         let total = self.samples as f64;
         FRGBA {
-            r: self.acc.r / total,
-            g: self.acc.g / total,
-            b: self.acc.b / total,
+            r: (self.acc.r / total).sqrt(),
+            g: (self.acc.g / total).sqrt(),
+            b: (self.acc.b / total).sqrt(),
             a: self.acc.a / total,
         }
     }
