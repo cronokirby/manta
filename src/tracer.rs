@@ -98,7 +98,9 @@ impl Camera {
 
         Ray {
             origin: self.origin + offset,
-            direction: self.lower_left + self.horizontal * u + self.vertical * v - self.origin - offset,
+            direction: self.lower_left + self.horizontal * u + self.vertical * v
+                - self.origin
+                - offset,
         }
     }
 }
@@ -345,36 +347,75 @@ impl SampledColor {
     }
 }
 
-const SAMPLES_PER_PIXEL: i32 = 50;
+fn random_color() -> FRGBA {
+    frgb(fastrand::f64(), fastrand::f64(), fastrand::f64()) 
+}
+
+fn random_scene() -> HittableList {
+    let mut world = HittableList::new();
+
+    let ground_material = Material::Diffuse(frgb(0.5, 0.5, 0.5));
+    world.add(Sphere {
+        center: Vec3::new(0.0, -1000.0, 0.0),
+        radius: 1000.0,
+        material: ground_material,
+    });
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let mat_choice = fastrand::f64();
+
+            let center = Vec3::new(
+                (a as f64) + 0.9 * fastrand::f64(),
+                0.2,
+                (b as f64) + fastrand::f64(),
+            );
+
+            if (center - Vec3::new(4.0, 0.2, 0.0)).len() > 0.9 {
+                let material = if mat_choice < 0.8 {
+                    Material::Diffuse(random_color())
+                } else if mat_choice < 0.95 {
+                    Material::Metal(random_color(), fastrand::f64())
+                } else {
+                 Material::Glass(1.5)
+                };
+                world.add(Sphere {
+                    center,
+                    radius: 0.2,
+                    material
+                })
+            }
+        }
+    }
+
+    world
+}
+
+const SAMPLES_PER_PIXEL: i32 = 1000;
 const MAX_DEPTH: i32 = 50;
 
 pub fn trace(width: usize, height: usize) -> Image {
     let mut image = Image::empty(width, height);
 
-    let mut world = HittableList::new();
+    let mut world = random_scene();
     world.add(Sphere {
-        center: Vec3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-        material: Material::Diffuse(frgb(0.7, 0.3, 0.3)),
+        center: Vec3::new(0.0, 1.0, 0.0),
+        radius: 1.0,
+        material: Material::Glass(1.5)
     });
     world.add(Sphere {
-        center: Vec3::new(0.0, -100.5, -1.0),
-        radius: 100.0,
-        material: Material::Diffuse(frgb(0.8, 0.8, 0.0)),
+        center: Vec3::new(-4.0, 1.0, 0.0),
+        radius: 1.0,
+        material: Material::Diffuse(frgb(0.4, 0.2, 0.1))
     });
     world.add(Sphere {
-        center: Vec3::new(1.0, 0.0, -1.0),
-        radius: 0.5,
-        material: Material::Metal(frgb(0.8, 0.6, 0.2), 0.3),
-    });
-    world.add(Sphere {
-        center: Vec3::new(-1.0, 0.0, -1.0),
-        radius: 0.5,
-        material: Material::Glass(1.5),
+        center: Vec3::new(4.0, 1.0, 0.0),
+        radius: 1.0,
+        material: Material::Metal(frgb(0.7, 0.6, 0.5), 0.0)
     });
 
-    let lookfrom = Point3::new(3.0, 3.0, 2.0);
-    let lookat = Point3::new(0.0, 0.0, -1.0);
+    let lookfrom = Point3::new(13.0, 2.0, 3.0);
+    let lookat = Point3::new(0.0, 0.0, 0.0);
 
     let camera = Camera::new(
         lookfrom,
@@ -382,8 +423,8 @@ pub fn trace(width: usize, height: usize) -> Image {
         Vec3::new(0.0, 1.0, 0.0),
         20.0,
         (width as f64) / (height as f64),
-        2.0,
-        (lookfrom - lookat).len(),
+        0.1,
+        10.0,
     );
 
     for y in 0..height {

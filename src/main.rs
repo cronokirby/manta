@@ -10,8 +10,8 @@ extern crate png;
 extern crate fastrand;
 
 fn main() -> io::Result<()> {
-    let width = 400;
-    let height: usize = 400 / 16 * 9;
+    let width = 1000;
+    let height: usize = width / 16 * 9;
 
     let img = tracer::trace(width, height);
 
