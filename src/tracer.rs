@@ -49,21 +49,22 @@ struct Camera {
     vertical: Vec3,
 }
 
-const ASPECT: f64 = 16.0 / 9.0;
-const VIEW_HEIGHT: f64 = 2.0;
-const VIEW_WIDTH: f64 = ASPECT * VIEW_HEIGHT;
-const FOCAL_LENGTH: f64 = 1.0;
-
 impl Camera {
-    fn new() -> Self {
+    fn new(vfov: f64, aspect: f64) -> Self {
+        let theta = vfov.to_radians();
+        let h = (theta / 2.0).tan();
+        let view_height = 2.0 * h;
+        let view_width = aspect * view_height;
+
         let origin = Vec3::new(0.0, 0.0, 0.0);
-        let horizontal = Vec3::new(VIEW_WIDTH, 0.0, 0.0);
-        let vertical = Vec3::new(0.0, VIEW_HEIGHT, 0.0);
+        let horizontal = Vec3::new(view_width, 0.0, 0.0);
+        let vertical = Vec3::new(0.0, view_height, 0.0);
+        let focal_length = 1.0;
         let lower_left =
-            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, FOCAL_LENGTH);
+            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
 
         Camera {
-            aspect: ASPECT,
+            aspect,
             origin,
             lower_left,
             horizontal,
@@ -324,8 +325,7 @@ impl SampledColor {
 const SAMPLES_PER_PIXEL: i32 = 50;
 const MAX_DEPTH: i32 = 50;
 
-pub fn trace(width: usize) -> Image {
-    let height = ((width as f64) / ASPECT) as usize;
+pub fn trace(width: usize, height: usize) -> Image {
     let mut image = Image::empty(width, height);
 
     let mut world = HittableList::new();
@@ -350,7 +350,7 @@ pub fn trace(width: usize) -> Image {
         material: Material::Glass(1.5),
     });
 
-    let camera = Camera::new();
+    let camera = Camera::new(90.0, (width as f64) / (height as f64));
 
     for y in 0..height {
         for x in 0..width {

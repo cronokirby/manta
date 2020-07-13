@@ -11,8 +11,9 @@ extern crate fastrand;
 
 fn main() -> io::Result<()> {
     let width = 400;
+    let height: usize = 400 / 16 * 9;
 
-    let img = tracer::trace(width);
+    let img = tracer::trace(width, height);
 
     #[cfg(feature = "png")]
     {
