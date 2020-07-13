@@ -85,6 +85,7 @@ impl Camera {
 #[derive(Copy, Clone, Debug)]
 enum Material {
     Diffuse(FRGBA),
+    Metal(FRGBA),
 }
 
 /// Represents the information we have after hitting a certain point.
@@ -125,6 +126,19 @@ impl HitRecord {
                 };
                 let attenuation = albedo;
                 Some((scattered, attenuation))
+            }
+            Material::Metal(albedo) => {
+                let reflected = ray.direction.normalize().reflect(self.normal);
+                let scattered = Ray {
+                    origin: self.p,
+                    direction: reflected,
+                };
+                let attenuation = albedo;
+                if scattered.direction.dot(&self.normal) > 0.0 {
+                    Some((scattered, attenuation)) 
+                } else {
+                    None
+                }
             }
         }
     }
@@ -214,11 +228,6 @@ fn ray_color(mut ray: Ray, world: &dyn Hittable, depth: i32) -> FRGBA {
                 color.g *= attenuation.g;
                 color.b *= attenuation.b;
             }
-            let target = rec.p + rec.normal + unit_rand();
-            ray = Ray {
-                origin: rec.p,
-                direction: target,
-            };
         } else {
             let unit = ray.direction.normalize();
             let t = 0.5 * (unit.y + 1.0);
@@ -286,7 +295,17 @@ pub fn trace(width: usize) -> Image {
     world.add(Sphere {
         center: Vec3::new(0.0, -100.5, -1.0),
         radius: 100.0,
-        material: Material::Diffuse(frgb(0.8, 0.8, 0.8)),
+        material: Material::Diffuse(frgb(0.8, 0.8, 0.0)),
+    });
+    world.add(Sphere {
+        center: Vec3::new(1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: Material::Metal(frgb(0.8, 0.6, 0.2)),
+    });
+    world.add(Sphere {
+        center: Vec3::new(-1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: Material::Metal(frgb(0.8, 0.8, 0.8)),
     });
 
     let camera = Camera::new();
