@@ -79,6 +79,24 @@ impl Camera {
     }
 }
 
+fn refract(v: Vec3, n: Vec3, ni_over_nt: f64) -> Option<Vec3> {
+    let uv = v.normalize();
+    let dt = uv.dot(&n);
+    let delta = 1.0 - ni_over_nt * ni_over_nt * (1.0 - dt * dt);
+    if delta > 0.0 {
+        let refracted = (uv - n * dt) * ni_over_nt - n * delta.sqrt();
+        Some(refracted)
+    } else {
+        None
+    }
+}
+
+fn schlick(cosine: f64, ref_idx: f64) -> f64 {
+    let mut r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    r0 *= r0;
+    r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
+}
+
 /// Represents a material we can observe after hitting an object
 ///
 /// Allows us to distinguish between metals and matte materials, and what not.
@@ -86,6 +104,7 @@ impl Camera {
 enum Material {
     Diffuse(FRGBA),
     Metal(FRGBA, f64),
+    Glass(f64),
 }
 
 /// Represents the information we have after hitting a certain point.
@@ -128,7 +147,7 @@ impl HitRecord {
                 Some((scattered, attenuation))
             }
             Material::Metal(albedo, fuzz) => {
-                let reflected = ray.direction.normalize().reflect(self.normal);
+                let reflected = ray.direction.reflect(self.normal);
                 let direction = reflected + unit_rand() * fuzz;
                 let scattered = Ray {
                     origin: self.p,
@@ -136,10 +155,50 @@ impl HitRecord {
                 };
                 let attenuation = albedo;
                 if scattered.direction.dot(&self.normal) > 0.0 {
-                    Some((scattered, attenuation)) 
+                    Some((scattered, attenuation))
                 } else {
                     None
                 }
+            }
+            Material::Glass(ri) => {
+                let reflected = ray.direction.reflect(self.normal);
+                let attenuation = frgb(1.0, 1.0, 1.0);
+
+                let outward_normal;
+                let ni_over_nt;
+                let cosine;
+                let dot = ray.direction.dot(&self.normal);
+                if dot > 0.0 {
+                    outward_normal = -self.normal;
+                    ni_over_nt = ri;
+                    cosine = ri * dot / ray.direction.len();
+                } else {
+                    outward_normal = self.normal;
+                    ni_over_nt = 1.0 / ri;
+                    cosine = -dot / ray.direction.len();
+                }
+
+                let m_refract = refract(ray.direction, outward_normal, ni_over_nt);
+                let scattered = if let Some(refracted) = m_refract {
+                    let reflect_prob = schlick(cosine, ri);
+                    if fastrand::f64() > reflect_prob {
+                        Ray {
+                            origin: self.p,
+                            direction: refracted,
+                        }
+                    } else {
+                        Ray {
+                            origin: self.p,
+                            direction: reflected,
+                        }
+                    }
+                } else {
+                    Ray {
+                        origin: self.p,
+                        direction: reflected,
+                    }
+                };
+                Some((scattered, attenuation))
             }
         }
     }
@@ -306,7 +365,7 @@ pub fn trace(width: usize) -> Image {
     world.add(Sphere {
         center: Vec3::new(-1.0, 0.0, -1.0),
         radius: 0.5,
-        material: Material::Metal(frgb(0.8, 0.8, 0.8), 0.1),
+        material: Material::Glass(1.5),
     });
 
     let camera = Camera::new();
