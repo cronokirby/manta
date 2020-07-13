@@ -47,10 +47,22 @@ struct Camera {
     horizontal: Vec3,
     /// A vector bringing us across the height of the image
     vertical: Vec3,
+    w: Vec3,
+    u: Vec3,
+    v: Vec3,
+    lens_radius: f64,
 }
 
 impl Camera {
-    fn new(lookfrom: Point3, lookat: Point3, vup: Vec3, vfov: f64, aspect: f64) -> Self {
+    fn new(
+        lookfrom: Point3,
+        lookat: Point3,
+        vup: Vec3,
+        vfov: f64,
+        aspect: f64,
+        aperture: f64,
+        focus_dist: f64,
+    ) -> Self {
         let theta = vfov.to_radians();
         let h = (theta / 2.0).tan();
         let view_height = 2.0 * h;
@@ -61,9 +73,11 @@ impl Camera {
         let v = w.cross(&u);
 
         let origin = lookfrom;
-        let horizontal = u * view_width;
-        let vertical = v * view_height;
-        let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - w;
+        let horizontal = u * view_width * focus_dist;
+        let vertical = v * view_height * focus_dist;
+        let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - w * focus_dist;
+
+        let lens_radius = aperture / 2.0;
 
         Camera {
             aspect,
@@ -71,13 +85,20 @@ impl Camera {
             lower_left,
             horizontal,
             vertical,
+            w,
+            u,
+            v,
+            lens_radius,
         }
     }
 
     fn get_ray(&self, u: f64, v: f64) -> Ray {
+        let rd: Vec3 = unit_rand() * self.lens_radius;
+        let offset = self.u * rd.x + self.v * rd.y;
+
         Ray {
-            origin: self.origin,
-            direction: self.lower_left + self.horizontal * u + self.vertical * v - self.origin,
+            origin: self.origin + offset,
+            direction: self.lower_left + self.horizontal * u + self.vertical * v - self.origin - offset,
         }
     }
 }
@@ -352,12 +373,17 @@ pub fn trace(width: usize, height: usize) -> Image {
         material: Material::Glass(1.5),
     });
 
+    let lookfrom = Point3::new(3.0, 3.0, 2.0);
+    let lookat = Point3::new(0.0, 0.0, -1.0);
+
     let camera = Camera::new(
-        Point3::new(-2.0, 2.0, 1.0),
-        Point3::new(0.0, 0.0, -1.0),
+        lookfrom,
+        lookat,
         Vec3::new(0.0, 1.0, 0.0),
-        90.0,
+        20.0,
         (width as f64) / (height as f64),
+        2.0,
+        (lookfrom - lookat).len(),
     );
 
     for y in 0..height {
