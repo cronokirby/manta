@@ -50,18 +50,20 @@ struct Camera {
 }
 
 impl Camera {
-    fn new(vfov: f64, aspect: f64) -> Self {
+    fn new(lookfrom: Point3, lookat: Point3, vup: Vec3, vfov: f64, aspect: f64) -> Self {
         let theta = vfov.to_radians();
         let h = (theta / 2.0).tan();
         let view_height = 2.0 * h;
         let view_width = aspect * view_height;
 
-        let origin = Vec3::new(0.0, 0.0, 0.0);
-        let horizontal = Vec3::new(view_width, 0.0, 0.0);
-        let vertical = Vec3::new(0.0, view_height, 0.0);
-        let focal_length = 1.0;
-        let lower_left =
-            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
+        let w = (lookfrom - lookat).normalize();
+        let u = vup.cross(&w).normalize();
+        let v = w.cross(&u);
+
+        let origin = lookfrom;
+        let horizontal = u * view_width;
+        let vertical = v * view_height;
+        let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - w;
 
         Camera {
             aspect,
@@ -350,7 +352,13 @@ pub fn trace(width: usize, height: usize) -> Image {
         material: Material::Glass(1.5),
     });
 
-    let camera = Camera::new(90.0, (width as f64) / (height as f64));
+    let camera = Camera::new(
+        Point3::new(-2.0, 2.0, 1.0),
+        Point3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        90.0,
+        (width as f64) / (height as f64),
+    );
 
     for y in 0..height {
         for x in 0..width {
