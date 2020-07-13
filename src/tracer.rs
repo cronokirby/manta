@@ -79,16 +79,11 @@ impl Camera {
     }
 }
 
-fn refract(v: Vec3, n: Vec3, ni_over_nt: f64) -> Option<Vec3> {
-    let uv = v.normalize();
-    let dt = uv.dot(&n);
-    let delta = 1.0 - ni_over_nt * ni_over_nt * (1.0 - dt * dt);
-    if delta > 0.0 {
-        let refracted = (uv - n * dt) * ni_over_nt - n * delta.sqrt();
-        Some(refracted)
-    } else {
-        None
-    }
+fn refract(uv: &Vec3, n: &Vec3, ri_over_rt: f64) -> Vec3 {
+    let cos_theta = -uv.dot(n);
+    let r_out_parallel = (*uv + *n * cos_theta) * ri_over_rt;
+    let r_out_perp = *n * -(1.0 - r_out_parallel.len2()).sqrt();
+    r_out_parallel + r_out_perp
 }
 
 fn schlick(cosine: f64, ref_idx: f64) -> f64 {
@@ -161,44 +156,31 @@ impl HitRecord {
                 }
             }
             Material::Glass(ri) => {
-                let reflected = ray.direction.reflect(self.normal);
+                let ri_over_rt = if self.outwards { 1.0 / ri } else { ri };
                 let attenuation = frgb(1.0, 1.0, 1.0);
 
-                let outward_normal;
-                let ni_over_nt;
-                let cosine;
-                let dot = ray.direction.dot(&self.normal);
-                if dot > 0.0 {
-                    outward_normal = -self.normal;
-                    ni_over_nt = ri;
-                    cosine = ri * dot / ray.direction.len();
-                } else {
-                    outward_normal = self.normal;
-                    ni_over_nt = 1.0 / ri;
-                    cosine = -dot / ray.direction.len();
+                let unit = ray.direction.normalize();
+                let mut cos_theta = -unit.dot(&self.normal);
+                if cos_theta > 1.0 {
+                    cos_theta = 1.0;
                 }
-
-                let m_refract = refract(ray.direction, outward_normal, ni_over_nt);
-                let scattered = if let Some(refracted) = m_refract {
-                    let reflect_prob = schlick(cosine, ri);
-                    if fastrand::f64() > reflect_prob {
-                        Ray {
-                            origin: self.p,
-                            direction: refracted,
-                        }
-                    } else {
-                        Ray {
-                            origin: self.p,
-                            direction: reflected,
-                        }
-                    }
-                } else {
-                    Ray {
+                let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+                let reflect_prob = schlick(cos_theta, ri);
+                if ri_over_rt * sin_theta > 1.0 || fastrand::f64() < reflect_prob {
+                    let reflected = unit.reflect(self.normal);
+                    let scattered = Ray {
                         origin: self.p,
                         direction: reflected,
-                    }
-                };
-                Some((scattered, attenuation))
+                    };
+                    Some((scattered, attenuation))
+                } else {
+                    let refracted = refract(&unit, &self.normal, ri_over_rt);
+                    let scattered = Ray {
+                        origin: self.p,
+                        direction: refracted,
+                    };
+                    Some((scattered, attenuation))
+                }
             }
         }
     }
