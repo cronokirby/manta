@@ -23,6 +23,24 @@ impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Vec3 { x, y, z }
     }
+
+    /// The dot product between two vectors
+    pub fn dot(self, other: Self) -> f64 {
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    /// The length of this vector
+    pub fn len(self) -> f64 {
+        self.len2().sqrt()
+    }
+
+    /// The squared length of this vector?
+    ///
+    /// Why care about the squared length? It's slightly faster to compute,
+    /// and can often be as useful as the distance itself.
+    pub fn len2(self) -> f64 {
+        self.dot(self)
+    }
 }
 
 // PERFORMANCE NOTE: For all of the operations, we work on moves / copies of the vector.
@@ -109,6 +127,82 @@ impl ops::Sub for Vec3 {
 // vec -= vec
 impl ops::SubAssign for Vec3 {
     fn sub_assign(&mut self, other: Self) {
+        *self = *self - other
+    }
+}
+
+/// Represents a single point in 3D space.
+///
+/// At a first glance, this might seem to be like the vector struct. Indeed,
+/// they're isomorphic, and have the same structure. But they represent different
+/// geometric concepts. A vector represents a direction along with a length, and
+/// has a dimension, but a point is dimensionless.
+///
+/// The operations around points often involve vectors instead of points, which
+/// is another difference. Basically, we can only do interesting things to points
+/// by the means of a vector, whereas a vector is "self-sufficient" in some sense.
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct Point3 {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+impl Point3 {
+    /// Create a new point from its components
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Point3 { x, y, z }
+    }
+
+    /// The point at the origin of the 3D space
+    pub fn origin() -> Self {
+        Point3::new(0.0, 0.0, 0.0)
+    }
+
+    /// The distance from this point to another
+    pub fn dist(self, to: Point3) -> f64 {
+        (self - to).len()
+    }
+
+    /// The squared distance from this point to another
+    pub fn dist2(self, to: Point3) -> f64 {
+        (self - to).len2()
+    }
+}
+
+impl ops::Add<Vec3> for Point3 {
+    type Output = Point3;
+
+    fn add(self, other: Vec3) -> Self {
+        Point3::new(self.x + other.x, self.y + other.y, self.z + other.z)
+    }
+}
+
+impl ops::AddAssign<Vec3> for Point3 {
+    fn add_assign(&mut self, other: Vec3) {
+        *self = *self + other
+    }
+}
+
+// Returns the vector that brings another point to this one
+impl ops::Sub<Point3> for Point3 {
+    type Output = Vec3;
+
+    fn sub(self, other: Point3) -> Vec3 {
+        Vec3::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
+}
+
+impl ops::Sub<Vec3> for Point3 {
+    type Output = Self;
+
+    fn sub(self, other: Vec3) -> Self {
+        Point3::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
+}
+
+impl ops::SubAssign<Vec3> for Point3 {
+    fn sub_assign(&mut self, other: Vec3) {
         *self = *self - other
     }
 }
